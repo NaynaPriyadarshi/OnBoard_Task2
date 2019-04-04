@@ -1,0 +1,282 @@
+﻿
+@model IEnumerable<MVC_CRUDE_API_TASK2.Models.Store>
+
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Stores</h2>
+
+@*//(4)... Add New Store Button.......when You Click this button POpUp modal Open with Create and Close button.... Create button is not working at the moment but close button is working. ..*@
+
+<button type="submit" class="btn btn-primary" data-toggle="modal" data-target="#CreateModal" onclick="ClearData();">Add New Store</button>
+<br />
+<br />
+
+
+@*//(1)...Create Table with Use of DataTable Plugin.........*@
+
+<table id="Storetable" class="table table-striped table-bordered table-hover" style="width:100%">
+    <thead>
+        <tr>
+            <th>StoreName</th>
+            <th>Address</th>
+            <th>Action(Edit)</th>
+            <th>Action(Delete)</th>
+        </tr>
+    </thead>
+    <tbody class="tbody"></tbody>
+
+</table>
+
+
+
+@*//(3)....Create PopUp Modal With Use of Bootstrape Modal............*@
+
+
+<div class="modal fade" id="CreateModal" tabindex="-1" role="dialog" aria-labelledby="CreateModal1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"></button>
+                <h4 class="modal-title" id="CreateModal1">Add/Edit Store</h4>
+            </div>
+            <div class="modal-body">
+                <form id="myform">
+
+                    <div class="form-group">
+                        <label for="Name">Name</label>
+                        <input type="text" class="form-control" id="Name" placeholder="Name" title="Please Enter Store Name" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Address">Address</label>
+                        <input type="text" class="form-control" id="Address" placeholder="Address" title="Please Enter Store Address" required />
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="btnSave">Save</button>
+                <button type="button" class="btn btn-primary" id="btnUpdate" style="display:none;">Update</button>
+                <button type="button" class="btn btn-default" id="btnClose" data-dismiss="modal" onclick="Close();">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@*//(2)....First part of (With use of Ajax ,Jquery and Api )Get data from  API controller(/api/Customers) and Successfully  Display in  the table...........*@
+
+@section scripts{
+    <script type="text/javascript">
+        var store_id;
+        $(document).ready(function () {
+
+            var mytable = $('#Storetable').DataTable({
+                ajax:
+                {
+                    url: "/api/Stores",
+                    dataSrc: ""
+                },
+                columns: [
+                    {
+                        data: "Name"
+                    },
+                    {
+                        data: "Address"
+                    },
+                    {
+                        render: function (data, type, Store) {
+                            return '<button class="btn btn-warning  js-edit" type="button" id="btn" edit-store-id="'
+                                + Store.StoreId
+                                + '"><i class="glyphicon glyphicon-pencil"></i>Edit</button>';
+                        }
+                    },
+
+
+                    {
+                        render: function (data, type, Store) {
+                            return '<button class = "btn btn-danger js-delete" delete-store-id="' + Store.StoreId
+                                + '"><i class="glyphicon glyphicon-trash"></i>Delete</button>'
+                        }
+                    }
+                ]
+            });
+
+
+
+
+
+            //....(5)....add........................................
+
+
+
+            $("#btnSave").click(function () {
+
+                var result = Store_validation();
+                if (result == false) {
+
+                    return false;
+                }
+
+
+                var mymodaldata = {
+                    name: $("#Name").val(),
+                    address: $("#Address").val()
+                }
+                $.ajax({
+                    type: "POST",
+                    url: "/api/Stores/",
+                    data: mymodaldata,
+                    success: function () {
+                        mytable.ajax.reload();
+                        $("#CreateModal").modal("hide");
+                        $('#btnSave').show();
+                    }
+                })
+            });
+
+
+
+            ////......(6).......edit................................
+
+
+
+            $("#Storetable").on("click", ".js-edit", function () {
+
+                var editbutton = $(this);
+                store_id = editbutton.attr("edit-store-id");
+
+                $.ajax({
+                    url: "/api/Stores/" + editbutton.attr("edit-store-id"),
+                    method: "GET",
+                    success: function (rawdata) {
+                        $("#Name").val(rawdata.Name);
+                        $("#Address").val(rawdata.Address);
+                        $("#CreateModal").modal("show");
+                        $('#btnUpdate').show();
+                        $('#btnSave').hide();
+
+                    }
+
+                });
+            });
+
+            //....(7).......update button .......................
+
+
+            $("#btnUpdate").click(function () {
+
+                var result = Store_validation();
+                if (result == false) {
+
+                    return false;
+                }
+
+
+                var mymodaldata = {
+
+                    StoreId: store_id,
+
+
+                    name: $("#Name").val(),
+                    address: $("#Address").val()
+                }
+                $.ajax({
+                    type: "PUT",
+                    url: "/api/Stores/" + store_id,
+                    data: mymodaldata,
+                    success: function () {
+                        mytable.ajax.reload();
+                        $("#CreateModal").modal("hide");
+                    }
+
+                })
+            });
+
+
+
+
+
+            //.....(8).....delete button....................................
+
+
+
+
+            //delete
+            $("#Storetable").on("click", ".js-delete", function () {
+
+                var delbutton = $(this);
+                bootbox.confirm("Are You Sure ,Do You want to Delete this Store from this List?", function (rawdata) {
+
+                    if (rawdata) {
+                        $.ajax({
+                            url: "/api/Stores/" + delbutton.attr("delete-store-id"),
+                            method: "Delete",
+                            success: function () {
+                                mytable.row(delbutton.parents("tr")).remove().draw();
+                            }
+
+                        });
+                    }
+                });
+            });
+
+
+
+        });
+
+
+        //This function use for clear TextBox  in Add New Customer popup modal under ADDNEWStore button.....................................
+
+        function ClearData() {
+            $('#Name').val("");
+            $('#Address').val("");
+            $('#btnUpdate').hide();
+            $('#btnSave').show();
+        }
+
+
+        function Store_validation() {
+
+            var isValid = true;
+            if ($('#Name').val().trim() == "") {
+                $('#Name').css('border-color', 'Red');
+
+
+                isValid = false;
+            }
+            else {
+                $('#Name').css('border-color', 'Green');
+
+            }
+
+            if ($('#Address').val().trim() == "") {
+                $("#Address").css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $("#Address").css('border-color', 'Green');
+            }
+            return isValid;
+        }
+
+
+
+        function Close() {
+            $('#Name').css('border-color', 'lightgrey');
+            $('#Address').css('border-color', 'lightgrey');
+        }
+
+
+
+
+
+
+    </script>
+
+}
+
+   

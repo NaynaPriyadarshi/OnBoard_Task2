@@ -1,0 +1,279 @@
+﻿@model IEnumerable<MVC_CRUDE_API_TASK2.Models.Product>
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<h2>Products</h2>
+
+@*//(4)... Add New Product Button.......when You Click this button POpUp modal Open with Create and Close button.... Create button is not working at the moment but close button is working. ..*@
+
+<button type="submit" class="btn btn-primary" data-toggle="modal" data-target="#CreateModal" onclick="ClearData();">Add New Product</button>
+<br />
+<br />
+
+
+@*//(1)...Create Table with Use of DataTable Plugin.........*@
+
+<table id="Producttable" class="table table-striped table-bordered table-hover" style="width:100%">
+    <thead>
+        <tr>
+            <th>ProductName</th>
+            <th>Price</th>
+            <th>Action(Edit)</th>
+            <th>Action(Delete)</th>
+        </tr>
+    </thead>
+    <tbody class="tbody"></tbody>
+
+</table>
+
+
+
+@*//(3)....Create PopUp Modal With Use of Bootstrape Modal............*@
+
+
+<div class="modal fade" id="CreateModal" tabindex="-1" role="dialog" aria-labelledby="CreateModal1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"></button>
+                <h4 class="modal-title" id="CreateModal1">Add/Edit Product</h4>
+            </div>
+            <div class="modal-body">
+                <form id="myform">
+
+                    <div class="form-group">
+                        <label for="Name">Name</label>
+                        <input type="text" class="form-control" id="Name" placeholder="Name" title="Please Enter Product Name" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Price">Price</label>
+                        <input type="text" class="form-control" id="Price" placeholder="Price" title="Please Enter Product Price" required />
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="btnSave">Save</button>
+                <button type="button" class="btn btn-primary" id="btnUpdate" style="display:none;">Update</button>
+                <button type="button" class="btn btn-default" id="btnClose" data-dismiss="modal" onclick="Close();">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@*//(2)....First part of (With use of Ajax ,Jquery and Api )Get data from  API controller(/api/Customers) and Successfully  Display in  the table...........*@
+
+@section scripts{
+    <script type="text/javascript">
+        var product_id;
+        $(document).ready(function () {
+
+            var mytable = $('#Producttable').DataTable({
+                ajax:
+                {
+                    url: "/api/Products",
+                    dataSrc: ""
+                },
+                columns: [
+                    {
+                        data: "Name"
+                    },
+                    {
+                        data: "Price"
+                    },
+                    {
+                        render: function (data, type, Product) {
+                            return '<button class="btn btn-warning  js-edit" type="button" id="btn" edit-product-id="'
+                                + Product.ProductId
+                                + '"><i class="glyphicon glyphicon-pencil"></i>Edit</button>';
+                        }
+                    },
+
+
+                    {
+                        render: function (data, type, Product) {
+                            return '<button class = "btn btn-danger js-delete" delete-product-id="' + Product.ProductId
+                                + '"><i class="glyphicon glyphicon-trash"></i>Delete</button>'
+                        }
+                    }
+                ]
+            });
+
+
+
+
+
+            //....(5)....add........................................
+
+
+
+            $("#btnSave").click(function () {
+
+                var result = Product_validation();
+                if (result == false) {
+
+                    return false;
+                }
+
+                var mymodaldata = {
+                    Name: $("#Name").val(),
+                    Price: $("#Price").val()
+                }
+                $.ajax({
+                    type: "POST",
+                    url: "/api/Products/",
+                    data: mymodaldata,
+                    success: function () {
+                        mytable.ajax.reload();
+                        $("#CreateModal").modal("hide");
+                        $('#btnSave').show();
+                    }
+                })
+            });
+
+
+
+            ////......(6).......edit................................
+
+
+
+            $("#Producttable").on("click", ".js-edit", function () {
+
+                var editbutton = $(this);
+                product_id = editbutton.attr("edit-product-id");
+
+                $.ajax({
+                    url: "/api/Products/" + editbutton.attr("edit-product-id"),
+                    method: "GET",
+                    success: function (rawdata) {
+                        $("#Name").val(rawdata.Name);
+                        $("#Price").val(rawdata.Price);
+                        $("#CreateModal").modal("show");
+                        $('#btnUpdate').show();
+                        $('#btnSave').hide();
+
+                    }
+
+                });
+            });
+
+            //....(7).......update button .......................
+
+
+            $("#btnUpdate").click(function () {
+
+                var result = Product_validation();
+                if (result == false) {
+
+                    return false;
+                }
+
+                var mymodaldata = {
+
+                    ProductId: product_id,
+
+
+                    Name: $("#Name").val(),
+                    Price: $("#Price").val()
+                }
+                $.ajax({
+                    type: "PUT",
+                    url: "/api/Products/" + product_id,
+                    data: mymodaldata,
+                    success: function () {
+                        mytable.ajax.reload();
+                        $("#CreateModal").modal("hide");
+                    }
+
+                })
+            });
+
+
+
+
+
+            //.....(8).....delete button....................................
+
+
+
+
+            //delete
+            $("#Producttable").on("click", ".js-delete", function () {
+
+                var delbutton = $(this);
+                bootbox.confirm("Are you sure ,Do you want to delete this Product Record from this List?", function (rawdata) {
+
+                    if (rawdata) {
+                        $.ajax({
+                            url: "/api/Products/" + delbutton.attr("delete-product-id"),
+                            method: "Delete",
+                            success: function () {
+                                mytable.row(delbutton.parents("tr")).remove().draw();
+                            }
+
+                        });
+                    }
+                });
+            });
+
+
+
+        });
+
+
+        //This function use for clear TextBox  in Add New Customer popup modal under ADDNEWCustomer button.....................................
+
+        function ClearData() {
+            $('#Name').val("");
+            $('#Price').val("");
+            $('#btnUpdate').hide();
+            $('#btnSave').show();
+        }
+
+        function Product_validation() {
+
+            var isValid = true;
+            if ($('#Name').val().trim() == "") {
+                $('#Name').css('border-color', 'Red');
+
+
+                isValid = false;
+            }
+            else {
+                $('#Name').css('border-color', 'Green');
+
+            }
+
+            if ($('#Price').val().trim() == "") {
+                $("#Price").css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $("#Address").css('border-color', 'Green');
+            }
+            return isValid;
+        }
+
+
+
+        function Close() {
+            $('#Name').css('border-color', 'lightgrey');
+            $('#Price').css('border-color', 'lightgrey');
+        }
+
+
+
+
+
+
+    </script>
+
+}
+
+   

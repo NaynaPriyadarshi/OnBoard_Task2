@@ -1,0 +1,442 @@
+﻿
+
+@model IEnumerable<MVC_CRUDE_API_TASK2.Models.Sales>
+
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2> Sales </h2>
+
+@*//(4)... Add New Sale Record Button.......when You Click this button POpUp modal Open with Create and Close button....  ..*@
+
+<button type="submit" class="btn btn-primary" data-toggle="modal" data-target="#CreateModal"  onclick="clearData();" >Add New Sale Record</button>
+<br />
+<br />
+
+
+@*//(1)...Create Table with Use of DataTable Plugin.........*@
+
+<table id="Salestable" class="table table-striped table-bordered table-hover" style="width:100%">
+    <thead>
+        <tr>
+            <th>CustomerName</th>
+            <th>ProductName</th>
+            <th>StoreName</th>
+            <th> Date </th>
+            <th>Action(Edit)</th>
+            <th>Action(Delete)</th>
+        </tr>
+    </thead>
+    <tbody class="tbody"></tbody>
+
+</table>
+
+
+
+@*//(3)....Create PopUp Modal With Use of Bootstrape Modal............*@
+
+
+<div class="modal fade" id="CreateModal" tabindex="-1" role="dialog" aria-labelledby="CreateModal1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"> </button>
+                <h4 class="modal-title" id="CreateModal1">Add/Edit Sales Record</h4>
+            </div>
+            <div class="modal-body">
+                <form id="myform">
+
+
+
+                    <div class="form-group">
+                        <label for="CustomerId">Customer Name</label>
+                        <select id="CustomerList" class="form-control">
+                            <option value="Select Customer">Select Customer</option>
+                        </select>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ProductId">Product Name</label>
+                        <select id="ProductList" class="form-control">
+                            <option value="Select Product">Select Product</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="StoreId">Store Name</label>
+                        <select id="StoreList" class="form-control">
+                            <option value="Select Store">Select Store</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="Date">Date</label>
+                        <input type="date" class="form-control" id= "Date" />
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="btnSave">Save</button>
+                <button type="button" class="btn btn-primary" id="btnUpdate" style="display:none;">Update</button>
+                <button type="button" class="btn btn-default" id="btnClose" data-dismiss="modal" onclick="Close();">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@*//(2)....First part of (With use of Ajax ,Jquery and Api )Get data from  API controller(/api/Customers) and Successfully  Display in  the table...........*@
+
+@section scripts{
+    <script type="text/javascript">
+        var Customer_Data = false;
+        var Product_Data = false;
+        var Store_Data = false;
+        var editbutton_id;
+       
+        var sale_id;
+        $(document).ready(function () {
+
+
+
+
+            //This function use for Get Sale Record
+            GetSalesRecord();
+
+
+            //This function use for add Sale Record
+            AddSalesRecord();
+
+
+            //This function use for delete Sale Record
+            DeleteSaleRecord();
+
+
+            //This function use for Update Sale Record
+            UpdateSaleRecord();
+
+
+            //This function use for Edit Record
+            EditRecord();
+
+
+            // This function use for Get CustomersRecord-ProductsRecord -StoresRecord
+
+            GetCustomers();
+            GetProducts();
+            GetStores();
+
+
+            //Get Date
+             GetDate();
+        });
+
+
+        //.................Edit CustomersRecord-ProductsRecord -StoresRecord................
+        function EditRecord() {
+
+            $("#Salestable").on("click", ".js-edit", function () {
+               editbutton = $(this);
+                //editbutton_id = editbutton.attr('edit-sale-id');
+                GetCustomers();
+                GetProducts();
+                GetStores();
+
+                $.ajax({
+                    type: "GET",
+                    url: "/api/Sales/" + editbutton.attr('edit-sale-id'),
+                    success: function (result) {
+
+                        $("#CustomerList").val(result.CustomerId);
+                        $("#ProductList").val(result.ProductId);
+                        $("#StoreList").val(result.StoreId);
+                        $("#Date").val(moment(result.date).format("YYYY-MM-DD"));
+                        $("#CreateModal").modal("show");
+                        $('#btnUpdate').show();
+                        $('#btnSave').hide();
+                    }
+                });
+
+                //Get Sale Id-for current sale record
+                editbutton_id = editbutton.attr('edit-sale-id');
+            });
+        }
+        
+        function UpdateSaleRecord() {
+            ////EDIT
+            $("#btnUpdate").on("click", function () {
+
+
+                var rawdata = Sale_validation();
+                if (rawdata == false) {
+                    return false;
+                }
+
+                //var editbutton = $('#editbtn');
+                var sale_id = editbutton_id;
+                var myformdata = {
+
+                    SaleId: sale_id,
+                    CustomerId: $("#CustomerList").val(),
+                    ProductId: $("#ProductList").val(),
+                    StoreId: $("#StoreList").val(),
+                    Date: $("#Date").val(),
+                    
+                }
+
+                $.ajax({
+                    type: "PUT",
+                    url: "/api/Sales/" + sale_id,
+                    data: myformdata,
+                    success: function () {
+                        $("#Salestable").DataTable().ajax.reload();
+                        $("#CreateModal").modal("hide");
+                    }
+                });
+            });
+
+       
+        }
+
+        function AddSalesRecord() {
+            ////ADD
+            $("#btnSave").click(function () { 
+
+                var rawdata = Sale_validation();
+                if (rawdata == false) {
+                    return false;
+                }
+
+                var myformdata = {
+                    CustomerId: $("#CustomerList").val(),
+                    ProductId: $("#ProductList").val(),
+                    StoreId: $("#StoreList").val(),
+                    Date: $("#Date").val()
+                }
+                $.ajax({
+                    type: "POST",
+                    url: "/api/Sales",
+                    data: myformdata,
+                    success: function () {
+                        $("#Salestable").DataTable().ajax.reload();
+                        $("#CreateModal").modal("hide");
+                    }
+                })
+            });
+        }
+
+       
+
+        function GetSalesRecord() {
+
+             mytable = $('#Salestable').DataTable({
+                ajax:
+                {    type: "GET",
+                    url: "/api/Sales",
+                    dataSrc: ""
+                },
+                columns: [
+                    {
+                        data: "CustomerName"
+                    },
+                    {
+                        data: "ProductName"
+                    },
+
+                    {
+                        data: "StoreName"
+                    },
+
+                    {
+                        data: "Date",
+                        render: function (data) {
+                            return moment(data).format("DD-MMM-YYYY");
+                        }
+                    },
+
+                    {
+                        data: "SaleId",
+                        render: function (data, type, Sales) {
+                            return '<button class="btn btn-warning  js-edit" type="button" id="editbtn" edit-sale-id="'
+                                + Sales.SaleId
+                                + '"><i class="glyphicon glyphicon-pencil"></i>Edit</button>';
+                        }
+                    },
+
+
+                    {
+
+                        data: "SaleId",
+                        render: function (data, type, Sales) {
+                            return '<button class = "btn btn-danger js-delete" type="button" id="delbtn" delete-sale-id="' + Sales.SaleId
+                                + '"><i class="glyphicon glyphicon-trash"></i>Delete</button>'
+                        }
+                    }
+                ]
+            });
+
+
+
+        }
+
+        function DeleteSaleRecord() {
+            //DELETE
+            $("#Salestable").on("click", "#delbtn", function (edata) {
+                var delbutton = $(this);
+                var s = delbutton.attr('delete-sale-id');
+
+                bootbox.confirm("Are you sure , Do you want to delete this Sale Record from this List?", function (result) {
+                    if (result) {
+                        $.ajax({
+                            type: "DELETE",
+                            url: "/api/Sales/" + delbutton.attr('delete-sale-id'),
+                            success: function () {
+                                mytable.row(delbutton.parents("tr")).remove().draw();
+                            }
+                        });
+                    }
+                });
+            });
+
+
+        }
+
+            //Function for clearing the textboxes
+            function clearData() {
+                $('#CustomerList').val("Select Customer");
+                $('#ProductList').val("Select Product");
+                $('#StoreList').val("Select Store");
+                $("#Date").val(moment(new Date()).format("YYYY-MM-DD"));
+                $('#btnUpdate').hide();
+                $('#btnSave').show();
+            }
+
+            function GetCustomers() {
+
+                if (Customer_Data) return;
+                $.ajax({
+                    type: "GET",
+                    url: "/api/Customers",
+                    success: function (result) {
+
+                        var options = '';
+
+                        for (var i = 0; i < result.length; i++) {
+                            options += '<option id="cusoption" value="' + result[i].CustomerId + '">' + result[i].Name + '</option>';
+                        }
+
+                        $('#CustomerList').append(options);
+                        Customer_Data = true;
+                    }
+                })
+            }
+
+
+            function GetProducts() {
+                if (Product_Data) return;
+                $.ajax({
+                    type: "GET",
+                    url: "/api/Products",
+                    success: function (result) {
+                        var options = '';
+                        for (var i = 0; i < result.length; i++) {
+                            options += '<option value="' + result[i].ProductId+ '">' + result[i].Name + '</option>';
+                        }
+                        $('#ProductList').append(options);
+                        Product_Data = true;
+                    }
+                });
+            }
+
+
+            function GetStores() {
+                if (Store_Data) return;
+                $.ajax({
+                    type: "GET",
+                    url: "/api/Stores",
+                    success: function (result) {
+                        var options = '';
+                        for (var i = 0; i < result.length; i++) {
+                            options += '<option value="' + result[i].StoreId + '">' + result[i].Name + '</option>';
+                        }
+                        $('#StoreList').append(options);
+                        Store_Data = true;
+                    }
+                })
+            }
+
+        function Sale_validation() {
+            var isValid = true;
+            if ($('#CustomerList').val().trim() == "Select Customer") {
+                $('#CustomerList').css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $('#CustomerList').css('border-color', 'Green');
+            }
+            if ($('#ProductList').val().trim() == "Select Product") {
+                $('#ProductList').css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $('#ProductList').css('border-color', 'Green');
+            }
+            if ($('#StoreList').val().trim() == "Select Store") {
+                $('#StoreList').css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $('#StoreList').css('border-color', 'Green');
+            }
+            if ($('#Date').val().trim() == "") {
+                $('#Date').css('border-color', 'Red');
+                isValid = false;
+            }
+            else {
+                $('#Date').css('border-color', 'Green');
+            }
+            return isValid;
+        }
+
+        function Close() {
+            $('#CustomerList').css('border-color', 'lightgrey');
+            $('#ProductList').css('border-color', 'lightgrey');
+            $('#StoreList').css('border-color', 'lightgrey');
+            $('#Date').css('border-color', 'lightgrey');
+        }
+
+        function GetDate() {
+            //Set the Current Date
+            $("#Date").val(moment().format("YYYY-MM-DD"))
+
+        }
+
+            function Close() {
+                $('#CustomerList').css('border-color', 'lightgrey');
+                $('#ProductList').css('border-color', 'lightgrey');
+                $('#StoreList').css('border-color', 'lightgrey');
+                $('#Date').css('border-color', 'lightgrey');
+            }
+
+            function GetDate() {
+                //Set the Current Date
+                $("#Date").val(moment().format("YYYY-MM-DD"))
+
+            }
+
+        
+    </script>
+}
+
+
+
+
+
+
+
+
+
